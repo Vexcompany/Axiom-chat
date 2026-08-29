@@ -57,6 +57,19 @@ The current provider strategy is still in the **discovery/research phase**. Do n
 
 This is a **research inventory**, not a claim that every entry is free, production-ready, or approved for Ryuna. Availability, pricing, quotas, terms, model catalogs, and API compatibility must be verified before integration.
 
+### OpenCode Zen — currently free-labeled model candidates
+
+OpenCode Zen currently lists these models with **Free** input/output pricing. They are available for a limited time, so their availability must be re-verified before production integration:
+
+- **Big Pickle** — `big-pickle`
+- **MiMo-V2.5 Free** — `mimo-v2.5-free`
+- **Hy3 Free** — `hy3-free`
+- **Nemotron 3 Ultra Free** — `nemotron-3-ultra-free`
+- **Nemotron 3.5 Lightning Free** — `nemotron-3.5-lightning-free`
+- **Muse Spark 1.2 Contributor Free** — `muse-spark-1.2-contributor-free`
+
+Most of these use the OpenAI-compatible Chat Completions endpoint; Muse Spark 1.2 Contributor Free uses the Responses API. OpenCode Zen's overall service is pay-as-you-go, so only the models explicitly marked Free should be treated as free candidates. Free status is temporary and may change. Do not send personal or confidential data to free models where OpenCode's privacy notes warn that data may be logged or used for improvement.
+
 ### Discovery sources
 
 Useful discovery sources currently include:
@@ -66,6 +79,7 @@ Useful discovery sources currently include:
 - `zebbern/no-cost-ai` GitHub repository
 - BAI API-key page
 - Caven / Caventra
+- OpenCode Zen model/pricing documentation
 
 The `no-cost-ai` repository should be treated as a discovery list. It contains a mixture of chat services, APIs, platforms, and other free AI resources; entries must be independently verified before use.
 
