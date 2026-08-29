@@ -57,18 +57,72 @@ The current provider strategy is still in the **discovery/research phase**. Do n
 
 This is a **research inventory**, not a claim that every entry is free, production-ready, or approved for Ryuna. Availability, pricing, quotas, terms, model catalogs, and API compatibility must be verified before integration.
 
-### OpenCode Zen — currently free-labeled model candidates
+### Free-model discovery shortlist
 
-OpenCode Zen currently lists these models with **Free** input/output pricing. They are available for a limited time, so their availability must be re-verified before production integration:
+The following is a research shortlist of models/endpoints that are currently free, free-tier, or explicitly free-labeled. **Free does not mean unlimited**, and some entries require signup, have small quotas, are temporary, or are intended only for testing. Re-check provider pricing before integration.
 
-- **Big Pickle** — `big-pickle`
-- **MiMo-V2.5 Free** — `mimo-v2.5-free`
-- **Hy3 Free** — `hy3-free`
-- **Nemotron 3 Ultra Free** — `nemotron-3-ultra-free`
-- **Nemotron 3.5 Lightning Free** — `nemotron-3.5-lightning-free`
-- **Muse Spark 1.2 Contributor Free** — `muse-spark-1.2-contributor-free`
+| Provider | Free / free-tier model candidates | API-key farming priority |
+|---|---|---|
+| **FreeLLMAPI** | Free catalog/router; model availability changes dynamically | **High — verify one key's actual quota first** |
+| **XKiro** | Models shown as $0/free on its lowest-price dashboard; exact free set must be rechecked dynamically | **High** |
+| **BAI** | Free models exposed through its key/API service; exact catalog/limits still need verification | **Medium** |
+| **Caven / Caventra** | Free model/API candidates; exact model catalog and quota still need verification | **Medium** |
+| **Google AI Studio / Gemini** | Gemini 3.7 Flash, Gemini 3.6 Flash, Gemini 3.5 Flash-Lite, Gemini 3.1 Flash-Lite, Gemini 2.5 Pro, Gemini 2.5 Flash, Gemini 2.5 Flash-Lite and other explicitly free-tier entries | **Very High** |
+| **Groq** | Free-plan hosted models include GPT-OSS 120B/20B, Qwen 3.6/3.8 27B, Compound/Compound Mini and other eligible models; limits are per account/model | **Very High** |
+| **Cerebras** | Free API tier for selected hosted open models; exact current free catalog must be checked from the live model list | **Very High** |
+| **OpenRouter** | Large rotating `:free` catalog plus `openrouter/free`; examples include Hy3, Nemotron 3 Ultra, Laguna M.1 and many other free endpoints | **Very High** |
+| **Cloudflare Workers AI** | Free Workers allocation: 10,000 neurons/day; examples currently available on Free include GLM-4.7-Flash, Gemma 4 26B and Nemotron 3 120B; some newer frontier models require Paid | **High** |
+| **NVIDIA NIM** | Free endpoints/downloadable free endpoints include Nemotron 3.5 Lightning 30B, Muse Glimmer 30B, Inkling, Laguna XS 2.1, GLM-5.2, MiniMax M3, Gemma 4 31B and others | **Very High** |
+| **Hugging Face Router** | Free monthly inference credit is currently $0.10 for Free users; many models/providers are available but this is a tiny free pool | **Low** |
+| **NavyAI** | Free/non-premium models can be discovered dynamically from `/v1/models`; API metadata exposes `premium` and `required_plan` | **High** |
+| **Mistral** | Free Studio/API mode with no card required; free usage is rate-limited and applies to eligible Mistral models | **High** |
+| **Cohere** | Free trial key; all Cohere models/APIs can be tested, but trial usage is rate-limited | **Medium** |
+| **Z.ai / Zhipu** | Free/promotional model access may appear through Z.ai, OpenRouter and other gateways; verify current direct-API free quota before farming | **Medium** |
+| **OpenCode Zen** | Big Pickle, MiMo-V2.5 Free, Hy3 Free, Nemotron 3 Ultra Free, Nemotron 3.5 Lightning Free, Muse Spark 1.2 Contributor Free | **Very High** |
+| **ModelScope** | Free hosted/inference model catalog exists; exact public API quota/model availability needs live verification | **Medium** |
+| **LLM7** | Free API catalog with multiple model families; exact current limits/models need live verification | **High** |
+| **Puter** | Hundreds of LLMs through Puter.js without API keys; includes GPT, Claude, Gemini, Grok, DeepSeek, Qwen, Mistral, Gemma, Llama and more | **Do not farm keys — keyless** |
+| **Pollinations** | Free/public model catalog and OpenAI-compatible endpoints; model availability and zero-price status vary by model/provider | **High, but verify auth model** |
+| **AnyAPI** | Free API access reported for multiple open models such as Llama, Qwen Coder, QwQ, Gemma, Nemotron, Mistral, DeepSeek and GPT-OSS; quota must be verified | **High** |
+| **UncloseAI** | Hermes AI, Qwen 3 Coder and TTS Speech listed as free, unlimited, OpenAI-compatible in the no-cost catalog; independently verify reliability/terms | **High** |
+| **Ollama / OllamaFreeAPI** | Huge/local model catalog; Ollama is primarily local/self-hosted, while OllamaFreeAPI is a separate free endpoint with uncertain public quota | **Low for keys; high for self-hosting** |
+| **DeepInfra** | Usually trial/credit-based rather than a durable unlimited-free tier; verify current promotional/free credits before use | **Low** |
+| **Together AI** | Promotional/free credits may be available for new accounts; not treated as a permanent free provider until verified | **Low** |
+| **Replicate** | Promotional/free credits may be available depending on account; usage is generally paid after credits | **Low** |
+| **Fireworks AI** | Promotional/free credits may be available for new accounts; not treated as permanent free quota | **Low** |
+| **IBM / watsonx** | Free trial/sandbox credits may exist, but not treated as a permanent free API pool | **Low** |
+| **Anthropic API** | No permanent public free API pool; trial/promotional access may vary | **Do not farm** |
+| **OpenAI API** | No permanent public free API pool; promotional credits may vary | **Do not farm** |
 
-Most of these use the OpenAI-compatible Chat Completions endpoint; Muse Spark 1.2 Contributor Free uses the Responses API. OpenCode Zen's overall service is pay-as-you-go, so only the models explicitly marked Free should be treated as free candidates. Free status is temporary and may change. Do not send personal or confidential data to free models where OpenCode's privacy notes warn that data may be logged or used for improvement.
+### Important interpretation
+
+This table is for **provider discovery and capacity planning**, not a recommendation to create accounts in violation of provider terms. Do not mass-create accounts, bypass identity/payment controls, evade rate limits, or rotate credentials to defeat quotas. If a provider permits multiple legitimate keys/accounts for a project or team, use that supported mechanism.
+
+For Ryuna, the useful number is not simply "how many API keys can we farm?". First measure the **quota per legitimate account/key**, then estimate how many legitimately obtained credentials are needed for the desired traffic.
+
+A rough planning formula is:
+
+```text
+required credentials ≈ peak required capacity / usable capacity per credential
+```
+
+Use a safety margin rather than trying to consume 100% of a provider's quota.
+
+### Current high-value verification targets
+
+For legitimate account creation and testing, prioritize:
+
+1. **Google AI Studio / Gemini**
+2. **Groq**
+3. **Cerebras**
+4. **OpenRouter free models**
+5. **NVIDIA NIM free endpoints**
+6. **OpenCode Zen free-labeled models**
+7. **Mistral free API mode**
+8. **Cloudflare Workers AI free allocation**
+9. **NavyAI free/non-premium models**
+10. **LLM7 / AnyAPI / UncloseAI** after verifying current limits and public-use terms
+11. **Puter / Pollinations** as keyless or alternative capacity sources where their terms permit the intended use
 
 ### Discovery sources
 
