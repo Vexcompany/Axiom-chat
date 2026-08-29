@@ -1,45 +1,50 @@
-# Axiom
+# Ryuna
 
-Axiom is a public AI assistant born from PAGASKA. Its primary identity and knowledge domain are PAGASKA, but it is **not** restricted to PAGASKA topics. It should behave as a general personal AI assistant for each user while retaining PAGASKA as its foundational context.
+Ryuna is a public AI assistant born from PAGASKA. Its primary identity and knowledge domain are PAGASKA, but it is **not** restricted to PAGASKA topics. It should behave as a general personal AI assistant for each user while retaining PAGASKA as its foundational context.
 
 This repository is the source of truth for the product direction. Future AI coding agents must read this document before implementing features and must preserve the architecture and product decisions below.
 
 ## Product identity
 
-The frontend exposes only three model choices:
+The frontend exposes four model choices:
 
-- **Axiom** — the normal/default assistant. Fast, practical, broad usage allowance.
-- **Axiom RV** — stronger reasoning/research-oriented assistant. More capable for difficult analysis and research.
-- **Axiom Yura** — the most expensive/heavy reasoning option. Usage must be tightly controlled. It may eventually have a small free allowance, but it must never be treated as unlimited.
+- **Ryuna** — the normal/default assistant. Fast, practical, broad usage allowance.
+- **Ryuna Ritra** — stronger reasoning/research-oriented assistant. More capable for difficult analysis and research.
+- **Ryuna Vuga** — a distinct model variant for specialized workloads.
+- **Ryuna Yura** — the most expensive/heavy reasoning option. Usage must be tightly controlled. It may eventually have a small free allowance, but it must never be treated as unlimited.
 
-Underlying models/providers such as Llama, Mistral, Gemini, Groq, Cerebras, OpenRouter models, Cloudflare AI, etc. are implementation details and must **not** be exposed as model choices in the normal Axiom UI.
+The variant names are product identities and should be treated as names in their own right. Their private/personal naming origins must not be exposed or documented in the public product or repository.
 
-The model selector is explicit: Axiom does not silently switch the user's selected model merely because a question is difficult. Instead, when a request would benefit substantially from stronger reasoning/research, Axiom can explain that RV/Yura would be more suitable. Do not add accidental one-click upgrade buttons such as "Use Axiom RV" or "Use Axiom Yura" because an accidental click could consume the user's limited usage.
+Underlying models/providers such as Llama, Mistral, Gemini, Groq, Cerebras, OpenRouter models, Cloudflare AI, etc. are implementation details and must **not** be exposed as model choices in the normal Ryuna UI.
+
+The model selector is explicit: Ryuna does not silently switch the user's selected model merely because a question is difficult. Instead, when a request would benefit substantially from stronger reasoning/research, Ryuna can explain that Ritra/Yura would be more suitable. Do not add accidental one-click upgrade buttons such as "Use Ryuna Ritra" or "Use Ryuna Yura" because an accidental click could consume the user's limited usage.
 
 ## Two repositories / separation of concerns
 
 The intended production architecture is split into:
 
-1. **Frontend** — public Axiom chat UI. It calls the backend and contains no provider API keys.
+1. **Frontend** — public Ryuna chat UI. It calls the backend and contains no provider API keys.
 2. **Backend** — routing, provider pools, credentials, model orchestration, tools, usage accounting, context management, and execution routing.
 
 Never place provider API keys in frontend code. The frontend should not need to know whether a response came from Gemini, Groq, Mistral, etc.
 
 ## Provider pool and API-key rotation
 
-Axiom will aggregate many providers and many accounts/keys. The backend should treat each credential as a managed resource, not as a static environment variable.
+Ryuna will aggregate many providers and many accounts/keys. The backend should treat each credential as a managed resource, not as a static environment variable.
 
 Conceptually:
 
 ```text
-Axiom Model Router
+Ryuna Model Router
   |
-  +-- Axiom provider pool
+  +-- Ryuna provider pool
   |     +-- Account A
   |     +-- Account B
   |     +-- Account C
   |
-  +-- RV provider pool
+  +-- Ritra provider pool
+  |
+  +-- Vuga provider pool
   |
   +-- Yura provider pool
   |
@@ -47,8 +52,6 @@ Axiom Model Router
         +-- Gemini
         +-- other providers
 ```
-
-The exact providers may change over time. The abstraction must not be hard-coded around one provider.
 
 ### Credential states
 
@@ -91,80 +94,37 @@ The system does not need exact remaining-token data when a provider does not exp
 
 ## AI-to-AI tools
 
-Axiom should use other AI systems as internal tools rather than exposing every provider/model to users.
+Ryuna should use other AI systems as internal tools rather than exposing every provider/model to users.
 
 Example:
 
 ```text
-User -> Axiom
+User -> Ryuna
           |
           +-> Gemini (web search)
           |       |
           |       +-> search/research result
           |
-          +-> Axiom synthesizes the result
+          +-> Ryuna synthesizes the result
                     |
                     +-> User
 ```
 
-The intermediate delegation should normally be invisible as a separate chat message. The final answer remains Axiom's answer, informed by the tool result.
+The intermediate delegation should normally be invisible as a separate chat message. The final answer remains Ryuna's answer, informed by the tool result.
 
 ### Web search
 
-Web search is an important tool. Axiom may delegate a search task to a suitable provider such as Gemini. The user's conversation should not become a visible conversation with Gemini; Gemini is an internal tool/provider.
-
-Example:
-
-```text
-User: Kapan OpenAI launching model X?
-Axiom -> internal search provider: find current/reliable information about X
-provider -> result
-Axiom -> user: synthesized answer with appropriate source/context
-```
+Web search is an important tool. Ryuna may delegate a search task to a suitable provider such as Gemini. The user's conversation should not become a visible conversation with Gemini; Gemini is an internal tool/provider.
 
 ### Vision
 
-When a user attaches an image, Axiom should delegate visual interpretation to the strongest/most suitable vision provider available (Gemini is a likely provider).
+When a user attaches an image, Ryuna should delegate visual interpretation to the strongest/most suitable vision provider available (Gemini is a likely provider).
 
 The vision result must become part of the ongoing conversation context.
-
-For example:
-
-```text
-User uploads: screenshot showing "token expired"
-        |
-        v
-Axiom -> vision provider
-        |
-        +-> identify screenshot contents
-        +-> explain error
-        +-> suggest/perform appropriate diagnosis
-        |
-        v
-Axiom receives result and answers user
-```
-
-If the user then asks:
-
-> Where do I find the token at Provider A?
-
-Axiom must understand that this is a continuation of the previous screenshot/error context. It must not suddenly behave as though the image and prior diagnosis never existed.
-
-Tool results therefore need to be represented as structured context available to subsequent turns, without repeatedly sending unnecessary raw tool output forever.
 
 ## Thinking / progress UI
 
 Long-running AI-to-AI calls can take time. The frontend should show meaningful progress events rather than generic loading dots.
-
-Example event:
-
-```text
-User menanyakan "kapan ...?"
-It's looking for current information...
-Searching relevant sources...
-Comparing the available information...
-Preparing the answer...
-```
 
 The actual wording can be generated by the application and should be natural. Do not expose internal secrets, raw provider prompts, API keys, or unnecessary implementation details.
 
@@ -172,15 +132,15 @@ Tool events should also have proper UI representations. For example, when a user
 
 ## Connectors
 
-Axiom is public and intended for PAGASKA users. GitHub and other powerful integrations should not be automatically available as unrestricted public tools.
+Ryuna is public and intended for PAGASKA users. GitHub and other powerful integrations should not be automatically available as unrestricted public tools.
 
-Instead, integrations belong under a user-controlled **Connections/Connectors** area. A user may explicitly connect an external service and then Axiom can use that connection according to the granted permissions.
+Instead, integrations belong under a user-controlled **Connections/Connectors** area. A user may explicitly connect an external service and then Ryuna can use that connection according to the granted permissions.
 
 The normal public tool set should therefore remain safe and useful without exposing the owner's private development integrations.
 
 ## Context and token efficiency
 
-Axiom must not blindly resend an ever-growing conversation history on every request.
+Ryuna must not blindly resend an ever-growing conversation history on every request.
 
 A target such as roughly 50-60 recent turns may be used as a starting point, but the architecture should optimize beyond simple truncation.
 
@@ -232,7 +192,7 @@ Do **not** route every request through Pterodactyl. Lightweight API/routing work
 Conceptually:
 
 ```text
-Axiom Backend
+Ryuna Backend
    |
    +-- lightweight task -> serverless/backend
    |
@@ -241,7 +201,7 @@ Axiom Backend
 
 ## Sidebar / navigation
 
-The public Axiom UI should follow the familiar AI-assistant pattern. The burger/sidebar navigation should eventually contain items such as:
+The public Ryuna UI should follow the familiar AI-assistant pattern. The burger/sidebar navigation should eventually contain items such as:
 
 - New Chat
 - conversation history
@@ -254,7 +214,7 @@ The exact visual design can evolve, but the information architecture should rema
 
 ## Donations / infrastructure
 
-Axiom is intended to be public for PAGASKA users. Infrastructure such as Pterodactyl hosting and external AI/provider usage can cost money. A Donate entry therefore belongs in the product navigation as a legitimate infrastructure-support feature.
+Ryuna is intended to be public for PAGASKA users. Infrastructure such as Pterodactyl hosting and external AI/provider usage can cost money. A Donate entry therefore belongs in the product navigation as a legitimate infrastructure-support feature.
 
 Do not let donation UI interfere with normal chat functionality.
 
@@ -271,7 +231,7 @@ Status: INVALID
 Error: invalid API key
 ```
 
-Other useful alerts may include quota exhaustion or repeated provider failures. This should be added only after the core Axiom checkpoints are stable.
+Other useful alerts may include quota exhaustion or repeated provider failures. This should be added only after the core Ryuna checkpoints are stable.
 
 ## Current implementation priority
 
@@ -279,7 +239,7 @@ Build in this general order and verify each checkpoint before expanding scope:
 
 1. Frontend chat foundation.
 2. Backend API foundation.
-3. Axiom / Axiom RV / Axiom Yura model routing.
+3. Ryuna / Ryuna Ritra / Ryuna Vuga / Ryuna Yura model routing.
 4. Provider abstraction and credential pools.
 5. Automatic health tracking and immediate key rotation.
 6. Conversation/context management and token optimization.
@@ -295,11 +255,11 @@ Do not prematurely implement future infrastructure if an earlier checkpoint is u
 
 ## Non-negotiable product rules
 
-- Only Axiom, Axiom RV, and Axiom Yura are visible as model choices.
+- Only Ryuna, Ryuna Ritra, Ryuna Vuga, and Ryuna Yura are visible as model choices.
 - Underlying provider/model names are implementation details.
-- Axiom should not silently switch the user's selected model because a request is difficult.
+- Ryuna should not silently switch the user's selected model because a request is difficult.
 - Yura is expensive/heavy and must have a strict usage limit.
-- Axiom and Axiom RV can have substantially more generous usage.
+- Ryuna and Ryuna Ritra can have substantially more generous usage.
 - Provider API keys stay in the backend/server environment, never in the public frontend.
 - Exhausted/rate-limited credentials are removed from the active pool immediately; do not retry them on every request.
 - AI providers can be used as internal tools and their intermediate calls should normally remain invisible to the user.
@@ -310,8 +270,8 @@ Do not prematurely implement future infrastructure if an earlier checkpoint is u
 - Optimize conversation context to control token usage and latency.
 - Pterodactyl is an execution layer, not the destination for every request.
 - Telegram monitoring is a later feature.
-- PAGASKA is the origin and foundational domain of Axiom, but Axiom is a general personal assistant and must not be artificially limited to PAGASKA topics.
+- PAGASKA is the origin and foundational domain of Ryuna, but Ryuna is a general personal assistant and must not be artificially limited to PAGASKA topics.
 
 ## Status
 
-This file describes the intended architecture/product direction. It is a blueprint for future implementation agents. Update this document when a major architectural decision is intentionally changed; do not silently diverge from it.
+This file describes the intended architecture/product direction. Update this document when a major architectural decision is intentionally changed; do not silently diverge from it.
