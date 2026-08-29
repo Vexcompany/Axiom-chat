@@ -15,22 +15,80 @@ The frontend exposes four model choices:
 
 The variant names are product identities and should be treated as names in their own right. Their private/personal naming origins must not be exposed or documented in the public product or repository.
 
-Underlying models/providers such as Llama, Mistral, Gemini, Groq, Cerebras, OpenRouter models, Cloudflare AI, etc. are implementation details and must **not** be exposed as model choices in the normal Ryuna UI.
+Underlying models/providers are implementation details and must not be exposed as model choices in the normal Ryuna UI.
 
-The model selector is explicit: Ryuna does not silently switch the user's selected model merely because a question is difficult. Instead, when a request would benefit substantially from stronger reasoning/research, Ryuna can explain that Ritra/Yura would be more suitable. Do not add accidental one-click upgrade buttons such as "Use Ryuna Ritra" or "Use Ryuna Yura" because an accidental click could consume the user's limited usage.
+## Provider discovery checkpoint
 
-## Two repositories / separation of concerns
+The current provider strategy is still in the **discovery/research phase**. Do not prematurely build a large provider router or commit to every service below. First verify which services are genuinely usable, free, stable, and suitable for a public application.
 
-The intended production architecture is split into:
+### Provider/platform candidates already identified
 
-1. **Frontend** — public Ryuna chat UI. It calls the backend and contains no provider API keys.
-2. **Backend** — routing, provider pools, credentials, model orchestration, tools, usage accounting, context management, and execution routing.
+- FreeLLMAPI
+- XKiro
+- No-Cost-AI (provider/service discovery catalog, not itself a provider)
+- BAI
+- Caven / Caventra
+- Google AI Studio / Gemini API
+- Groq
+- Cerebras
+- OpenRouter
+- Cloudflare Workers AI
+- NVIDIA NIM
+- Hugging Face Router
+- NavyAI
+- Mistral
+- Cohere
+- Z.ai / Zhipu
+- OpenCode Zen
+- ModelScope
+- LLM7
+- Puter
+- Pollinations
+- AnyAPI
+- UncloseAI
+- Ollama / OllamaFreeAPI
+- DeepInfra
+- Together AI
+- Replicate
+- Fireworks AI
+- IBM
+- Anthropic API
+- OpenAI API
 
-Never place provider API keys in frontend code. The frontend should not need to know whether a response came from Gemini, Groq, Mistral, etc.
+This is a **research inventory**, not a claim that every entry is free, production-ready, or approved for Ryuna. Availability, pricing, quotas, terms, model catalogs, and API compatibility must be verified before integration.
+
+### Discovery sources
+
+Useful discovery sources currently include:
+
+- FreeLLMAPI model catalog
+- XKiro model dashboard
+- `zebbern/no-cost-ai` GitHub repository
+- BAI API-key page
+- Caven / Caventra
+
+The `no-cost-ai` repository should be treated as a discovery list. It contains a mixture of chat services, APIs, platforms, and other free AI resources; entries must be independently verified before use.
+
+### Evaluation checklist
+
+For each candidate provider, verify:
+
+1. Whether access is genuinely free and whether a payment card is required.
+2. Request, token, daily, monthly, and concurrency limits.
+3. Available models and model families.
+4. Whether the API is OpenAI-compatible or requires a custom adapter.
+5. Streaming support.
+6. Vision/multimodal support.
+7. Tool/function-calling support.
+8. Reliability and rate-limit behavior.
+9. Terms that allow use by a public application.
+10. Credential/security requirements.
+
+Only after this discovery checkpoint should Ryuna select a smaller set of providers for actual integration.
 
 ## Provider pool and API-key rotation
 
-Ryuna will aggregate many providers and many accounts/keys. The backend should treat each credential as a managed resource, not as a static environment variable.
+Ryuna will aggregate many providers and many accounts/keys. The backend should eventually treat each credential as a managed resource, not as a static environment variable.
 
 Conceptually:
 
@@ -38,214 +96,43 @@ Conceptually:
 Ryuna Model Router
   |
   +-- Ryuna provider pool
-  |     +-- Account A
-  |     +-- Account B
-  |     +-- Account C
-  |
   +-- Ritra provider pool
-  |
   +-- Vuga provider pool
-  |
   +-- Yura provider pool
-  |
   +-- Tool providers
-        +-- Gemini
-        +-- other providers
 ```
 
-### Credential states
+A credential should support health/state tracking such as `HEALTHY`, `DEGRADED`, `RATE_LIMITED`, `QUOTA_EXHAUSTED`, `INVALID`, `DISABLED`, and optionally `PROBING` during recovery.
 
-A credential should support health/state tracking such as:
-
-- `HEALTHY`
-- `DEGRADED`
-- `RATE_LIMITED`
-- `QUOTA_EXHAUSTED`
-- `INVALID`
-- `DISABLED`
-- optionally `PROBING` during recovery
-
-The router must inspect provider HTTP status, error codes/messages, retry hints, and provider-specific quota signals.
-
-### Critical rotation rule
-
-If Account A is known to be rate-limited or quota-exhausted, the **next request must not try Account A again**. It should immediately select a healthy account, e.g. Account B, and Account B becomes the effective primary while A is unavailable.
-
-Do not implement slow fallback chains such as:
-
-```text
-A -> error -> retry -> timeout -> B
-```
-
-Instead:
-
-```text
-A -> quota/rate-limit signal
-  -> mark A unavailable
-  -> B becomes primary
-  -> next request goes directly to B
-```
-
-When a cooldown expires, a previously limited key may enter `PROBING`. A small request can determine whether it is healthy again. If probing fails, keep it out of the active pool.
-
-Do not assume every 429 means permanent quota exhaustion. Distinguish temporary rate limits from longer quota exhaustion and invalid credentials.
-
-The system does not need exact remaining-token data when a provider does not expose it. Actual provider responses are the source of truth for health transitions.
+If a credential is known to be rate-limited or quota-exhausted, the next request must not retry that credential. It should be removed from the active pool until it is eligible for recovery/probing.
 
 ## AI-to-AI tools
 
-Ryuna should use other AI systems as internal tools rather than exposing every provider/model to users.
-
-Example:
-
-```text
-User -> Ryuna
-          |
-          +-> Gemini (web search)
-          |       |
-          |       +-> search/research result
-          |
-          +-> Ryuna synthesizes the result
-                    |
-                    +-> User
-```
-
-The intermediate delegation should normally be invisible as a separate chat message. The final answer remains Ryuna's answer, informed by the tool result.
-
-### Web search
-
-Web search is an important tool. Ryuna may delegate a search task to a suitable provider such as Gemini. The user's conversation should not become a visible conversation with Gemini; Gemini is an internal tool/provider.
-
-### Vision
-
-When a user attaches an image, Ryuna should delegate visual interpretation to the strongest/most suitable vision provider available (Gemini is a likely provider).
-
-The vision result must become part of the ongoing conversation context.
-
-## Thinking / progress UI
-
-Long-running AI-to-AI calls can take time. The frontend should show meaningful progress events rather than generic loading dots.
-
-The actual wording can be generated by the application and should be natural. Do not expose internal secrets, raw provider prompts, API keys, or unnecessary implementation details.
-
-Tool events should also have proper UI representations. For example, when a user connects GitHub, the UI can show a tool event such as **Menghubungkan tools GitHub**. The frontend should use clean SVG/iconography rather than decorative emoji in the actual product UI.
-
-## Connectors
-
-Ryuna is public and intended for PAGASKA users. GitHub and other powerful integrations should not be automatically available as unrestricted public tools.
-
-Instead, integrations belong under a user-controlled **Connections/Connectors** area. A user may explicitly connect an external service and then Ryuna can use that connection according to the granted permissions.
-
-The normal public tool set should therefore remain safe and useful without exposing the owner's private development integrations.
+Ryuna should use other AI systems as internal tools rather than exposing every provider/model to users. The final response remains Ryuna's response, informed by internal tool results.
 
 ## Context and token efficiency
 
-Ryuna must not blindly resend an ever-growing conversation history on every request.
-
-A target such as roughly 50-60 recent turns may be used as a starting point, but the architecture should optimize beyond simple truncation.
-
-Preferred strategy:
-
-1. Keep a recent-window of raw messages for immediate continuity.
-2. Maintain a compact conversation summary for older context.
-3. Store important user-provided facts/decisions as structured conversation memory only when useful.
-4. Store tool outputs in compact structured form rather than repeatedly embedding huge raw responses.
-5. Retrieve older context selectively when relevant instead of always sending everything.
-6. Keep the core system prompt stable and avoid duplicating unnecessary instructions in every layer.
-7. Compress/summarize long tool outputs before putting them into durable conversation context.
-
-The goal is to preserve continuity while minimizing token leakage and latency.
+Ryuna must not blindly resend an ever-growing conversation history. Use recent raw context, compact summaries for older context, selective retrieval, and compact tool-result storage to control token usage and latency.
 
 ## Usage tracking
 
-Usage tracking belongs primarily in the backend because the backend controls provider calls and actual consumption.
-
-The frontend can display usage information returned by the backend, but it must not be the authority for quota accounting.
-
-An internal/admin UI is planned to show things such as:
-
-- provider/account health
-- active/primary credential
-- rate-limit state
-- quota-exhausted state
-- cooldown/reset information when available
-- request counts
-- provider errors
-- overall usage
-
-This admin UI can eventually live alongside the backend/admin application without exposing secrets to public users.
+Usage tracking belongs primarily in the backend because the backend controls provider calls and actual consumption. An internal/admin UI is planned for provider/account health, quota/rate-limit state, errors, and usage.
 
 ## Pterodactyl execution layer
 
-A Pterodactyl-hosted Ubuntu/Universal node is planned as an execution layer for capabilities that are unsuitable for serverless environments such as Vercel or Cloudflare Workers.
-
-Examples include:
-
-- Playwright/browser automation
-- long-running jobs
-- serverful tooling
-- heavier execution workloads
-- tools that require a persistent process or browser runtime
-
-Do **not** route every request through Pterodactyl. Lightweight API/routing work should stay on the appropriate serverless/backend platform. A dedicated execution router should decide where a task belongs.
-
-Conceptually:
-
-```text
-Ryuna Backend
-   |
-   +-- lightweight task -> serverless/backend
-   |
-   +-- browser/heavy/long-running task -> Pterodactyl worker
-```
-
-## Sidebar / navigation
-
-The public Ryuna UI should follow the familiar AI-assistant pattern. The burger/sidebar navigation should eventually contain items such as:
-
-- New Chat
-- conversation history
-- Connections / Connectors
-- Tools
-- Settings
-- Donate
-
-The exact visual design can evolve, but the information architecture should remain simple and mobile-friendly.
-
-## Donations / infrastructure
-
-Ryuna is intended to be public for PAGASKA users. Infrastructure such as Pterodactyl hosting and external AI/provider usage can cost money. A Donate entry therefore belongs in the product navigation as a legitimate infrastructure-support feature.
-
-Do not let donation UI interfere with normal chat functionality.
-
-## Future notifications
-
-Telegram notifications are planned for a later checkpoint, not the initial implementation.
-
-Eventually the backend can notify the maintainer when credentials require attention, for example:
-
-```text
-Provider: Gemini
-Account: A
-Status: INVALID
-Error: invalid API key
-```
-
-Other useful alerts may include quota exhaustion or repeated provider failures. This should be added only after the core Ryuna checkpoints are stable.
+A Pterodactyl-hosted node is planned as an execution layer for capabilities unsuitable for serverless environments, such as browser automation, long-running jobs, and heavier execution workloads. Do not route every request through Pterodactyl.
 
 ## Current implementation priority
-
-Build in this general order and verify each checkpoint before expanding scope:
 
 1. Frontend chat foundation.
 2. Backend API foundation.
 3. Ryuna / Ryuna Ritra / Ryuna Vuga / Ryuna Yura model routing.
-4. Provider abstraction and credential pools.
-5. Automatic health tracking and immediate key rotation.
-6. Conversation/context management and token optimization.
-7. Tool/event protocol and frontend progress UI.
-8. Web search delegation.
-9. Vision delegation and persistent tool-result context.
+4. **Provider discovery and verification checkpoint.**
+5. Provider abstraction and credential pools.
+6. Automatic health tracking and immediate key rotation.
+7. Conversation/context management and token optimization.
+8. Tool/event protocol and frontend progress UI.
+9. Web search and vision delegation.
 10. Connector architecture.
 11. Backend usage tracking and admin monitoring.
 12. Pterodactyl execution worker/router.
@@ -259,19 +146,10 @@ Do not prematurely implement future infrastructure if an earlier checkpoint is u
 - Underlying provider/model names are implementation details.
 - Ryuna should not silently switch the user's selected model because a request is difficult.
 - Yura is expensive/heavy and must have a strict usage limit.
-- Ryuna and Ryuna Ritra can have substantially more generous usage.
 - Provider API keys stay in the backend/server environment, never in the public frontend.
 - Exhausted/rate-limited credentials are removed from the active pool immediately; do not retry them on every request.
 - AI providers can be used as internal tools and their intermediate calls should normally remain invisible to the user.
-- Tool results must remain available as conversation context when later turns depend on them.
 - Public connectors require explicit user connection/authorization.
-- The frontend should show useful progress/tool events during slow operations.
-- Avoid emoji in the actual frontend product UI; use SVG/icons instead.
 - Optimize conversation context to control token usage and latency.
 - Pterodactyl is an execution layer, not the destination for every request.
-- Telegram monitoring is a later feature.
 - PAGASKA is the origin and foundational domain of Ryuna, but Ryuna is a general personal assistant and must not be artificially limited to PAGASKA topics.
-
-## Status
-
-This file describes the intended architecture/product direction. Update this document when a major architectural decision is intentionally changed; do not silently diverge from it.
